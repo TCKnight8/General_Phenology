@@ -1,0 +1,59 @@
+import pandas as pd
+import numpy as ny
+import matplotlib as mpl
+
+IDD = pd.read_csv('Simple_insect_development.csv', delimiter = ‘,')
+
+##Menu calls a prompt and gives the user the option to either look a a list of insects in the dataframe or to immediately input the name of their pest.
+##After the choice, it calls the insect_ID_string_input() function to return the string argument that will be used in the find_limits() function.
+
+def menu(df):
+    response = input("""Input insect to model:
+                     A: Call menu
+                     B: Input name directly
+                     """ 
+                     )
+    if response == "A":
+        menu = df["Common Name"]
+        print(menu)
+        string = insect_ID_string_input()
+    else:
+        string = insect_ID_string_input()
+    return string
+
+##insect_ID_string_input() allows the user to create a string that will be used in the find_limits and find_row functions.
+##Need an error-check line or two to confirm that the selected string exists in the dataframe, or else it will throw up an error.
+def insect_ID_string_input():
+    string = input("Type the name of the insect pest you want to model. ")
+    return string
+
+##find_row() searches the dataframe for the string input. 
+##It returns the full row as a dataframe object that is used in the find_limits() function.
+def find_row(df,string):
+    row = df.loc[df["Common Name"] == string]
+    return row
+
+##find_limits takes the dataframe and string arguments, puts them into the find_row function and identifies the correct base and upper temperature thresholds for the target pest.
+##it also calls the celsius_to_far function to convert the celsius values into fahrenheit
+def find_limits(df, string):
+    row = find_row(df, string)
+    base_list = row.values.tolist()
+    base = base_list[0][2]
+    base_f = celsius_to_far(base)
+    #upper = base_list[0][3]
+    #upper_f = celsius_to_far(upper)
+    #print(base, upper)
+    #print(base_f, upper_f)
+    return base_f
+
+##degree_days is a general function that takes the base temperature threshold for a pest and a list of temperature values and produces a cumulative number of degree day units.
+def degree_days(base_f, list):
+    x = 0
+    for value in list:
+        y = int(value - base_f)
+        if y <= 0:
+            y = 0
+        else:
+            pass
+        x += y
+    return x
