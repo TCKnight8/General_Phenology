@@ -1,0 +1,38 @@
+##class object meant to pass objects from a list to calculate and report degree day accumulation.
+
+class Degree_day:
+    def __init__(self, common_name, scientific_name, base_temp, upper_temp):
+        self.common_name        = common_name
+        self.scientific_name    = scientific_name
+        self.base_temp          = base_temp
+        self.upper_temp         = upper_temp
+        self.temp_list          = temp_list
+        
+#class object designed to find specific rows in a data frame based on a string argument. These rows are then to be turned into list objects 
+#that can be searched for specific values. 
+
+class find_elements:
+    def __init__(self, df, string):
+        self.df     = df
+        self.string = string
+
+    def find_row(self):
+        row      = df.loc[df["Scientific name"] == self.string]
+        row_list = row.values.tolist()
+        return row_list
+    
+    def common_name(self, row_list):
+        common_name = row_list[0][1]
+        return common_name
+    
+    def scientific_name(self, row_list):
+        scientific_name = row_list[0][0]
+        return scientific_name
+    
+    def base_temp(self, row_list):
+        base_temp = row_list[0][2]
+        return base_temp
+    
+    def upper_temp(self, row_list):
+        upper_temp = row_list[0][3]
+        return upper_temp
