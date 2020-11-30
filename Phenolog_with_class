@@ -1,12 +1,33 @@
 ##class object meant to pass objects from a list to calculate and report degree day accumulation.
 
 class Degree_day:
-    def __init__(self, common_name, scientific_name, base_temp, upper_temp):
+    def __init__(self, common_name, scientific_name, base_temp, upper_temp, temp_list):
         self.common_name        = common_name
         self.scientific_name    = scientific_name
         self.base_temp          = base_temp
         self.upper_temp         = upper_temp
         self.temp_list          = temp_list
+        
+    def degree_days(self):
+        x = 0
+        for value in self.temp_list:
+            y = int(value - self.base_temp)
+            if y <= 0:
+                y = 0
+            else:
+                pass
+            x += y
+        return x  
+        
+#class objected meant to create a list object of temperature data from a dataframe.
+
+class temperature_input:
+    def __init__(self, temp_df):
+        self.temp_df = temp_df
+        
+    def make_temp_list(self):
+        temp_listoflist = self.temp_df["Temp"].tolist()
+        return temp_listoflist
         
 #class object designed to find specific rows in a data frame based on a string argument. These rows are then to be turned into list objects 
 #that can be searched for specific values. 
@@ -36,3 +57,15 @@ class find_elements:
     def upper_temp(self, row_list):
         upper_temp = row_list[0][3]
         return upper_temp
+
+#Example
+import pandas as pd
+import numpy as ny
+import matplotlib as plt
+
+df = pd.read_csv('Simple_insect_development.csv', delimiter = ',')
+temp_frame = pd.read_csv('random_temp.csv')
+
+a = find_elements(df, "Circulifer tenellus")
+tdf = temperature_input(temp_frame)
+b = Degree_day(a.common_name(a.find_row()), a.scientific_name(a.find_row()), a.base_temp(a.find_row()), a.upper_temp(a.find_row()), tdf.make_temp_list())
