@@ -11,57 +11,68 @@ class Degree_day:
     def degree_days(self):
         dd = 0
         x  = 0
+        z  = 0
         for list in self.temp_list:
-            T = (list[0]+list[1])/2
-            alpha = (list[1]-list[0])/2
-            if list[0] > self.upper_temp and list[1] > self.upper_temp:
-                y = 0.5*(self.upper_temp-self.base_temp)
-            elif list[0] < self.base_temp and list[1] < self.base_temp:
+            T     = (list[0] + list[1])/2
+            alpha = (list[1] - list[0])/2 
+            if list[0]   > self.upper_temp and list[1] > self.upper_temp:
+                y = 0.5*(self.upper_temp - self.base_temp)
+            elif list[0] < self.base_temp and  list[1] < self.base_temp:
                 y = 0
-            elif list[0] > self.base_temp and list[1] <= self.upper_temp:
-                y = 0.5*(T-self.base_temp)
-            elif list[0] <= self.base_temp and list[1] <= self.upper_temp:
-                theta = np.arcsin((self.base_temp-T)/alpha)
-                y = (1/(2*3.141))*((T-self.base_temp)*(theta+3.141/2)+T*np.cos(theta))
-            elif list[0] >= self.base_temp and list[1] >= self.upper_temp:
-                theta = np.arcsin((self.upper_temp-T)/alpha)
-                y = (1/(2*3.141))*((T-self.base_temp)*(theta+3.141/2)+(self.upper_temp-self.base_temp)*(3.141/2-theta)-alpha*np.cos(theta))
-            elif list[0] <= self.base_temp and list[1] >= self.upper_temp:
-                theta1 = np.arcsin((self.base_temp-T)/alpha)
-                theta2 = np.arcsin((self.upper_temp-T)/alpha)
-                y = (1/(2*3.141))*((T-self.base_temp)*(theta2-theta1)+alpha*(np.cos(theta1)-np.cos(theta2))+(self.upper_temp-self.base_temp)*(3.141/2-theta2))
-            if y <= 0:
+            elif list[0] > self.base_temp and  list[1] < self.upper_temp:
+                y = 0.5*(T - self.base_temp)
+            elif list[0] < self.base_temp and  list[1] < self.upper_temp:
+                theta = np.arcsin((self.base_temp - T)/alpha)
+                y = (1/(2.3.141))*(T - self.base_temp)*(theta + 3.141/2) 
+                    + T*np.cos(theta))
+            elif list[0] > self.base_temp and  list[1] > self.upper_temp:
+                theta = np.arcsin((self.upper_temp - T)/alpha)
+                y = (1/2*3.141))*((T - self.base_temp)*(theta + 3.141/2)
+                    + (self.upper_temp - self.base_temp)*(3.141/2 - theta)
+                    - alpha*np.cos(theta))
+            elif list[0] < self.base_temp and  list[1] > self.upper_temp:
+                theta1 = np.arcsin((self.base_temp - T)/alpha)
+                theta2 = np.arcsin((self.upper_temp - T)/alpha)
+                y = (1/(2*3.141))*((T - self.base_temp)*(theta2 - theta1)
+                    + alpha*(np.cos(theta1)
+                    - np.cos(theta2))
+                    + (self.upper_temp - self.base_temp)*(3.141/2 - theta2))
+            if y < 0:
                 y = 0
             else:
                 pass
             x = y
-            
-            z = 0
-            T = (list[2]+list[1])/2
-            alpha = (list[1]-list[2])/2
-            if list[2] > self.upper_temp and list[1] > self.upper_temp:
-                q = 0.5*(self.upper_temp-self.base_temp)
-            elif list[2] < self.base_temp and list[1] < self.base_temp:
+
+            T2     = (list[2] + list[1])/2
+            alpha2 = (list[1] - list[2])/2
+            if list[2]   > self.upper_temp and list[1] > self.upper_temp:
+                q = 0.5*(self.upper_temp - self.base_temp)
+            elif list[2] < self.base_temp and  list[1] < self.base_temp:
                 q = 0
-            elif list[2] > self.base_temp and list[1] <= self.upper_temp:
-                q = 0.5*(T-self.base_temp)
-            elif list[2] <= self.base_temp and list[1] <= self.upper_temp:
-                theta = np.arcsin((self.base_temp-T)/alpha)
-                q = (1/(2*3.141))*((T-self.base_temp)*(theta+3.141/2)+T*np.cos(theta))
-            elif list[2] >= self.base_temp and list[1] >= self.upper_temp:
-                theta = np.arcsin((self.upper_temp-T)/alpha)
-                q = (1/(2*3.141))*((T-self.base_temp)*(theta+3.141/2)+(self.upper_temp-self.base_temp)*(3.141/2-theta)-alpha*np.cos(theta))
-            elif list[2] <= self.base_temp and list[1] >= self.upper_temp:
-                theta1 = np.arcsin((self.base_temp-T)/alpha)
-                theta2 = np.arcsin((self.upper_temp-T)/alpha)
-                q = (1/(2*3.141))*((T-self.base_temp)*(theta2-theta1)+alpha*(np.cos(theta1)-np.cos(theta2))+(self.upper_temp-self.base_temp)*(3.141/2-theta2))
-            if q <= 0:
+            elif list[2] > self.base_temp and  list[1] < self.upper_temp:
+                q = 0.5*(T2 - self.base_temp)
+            elif list[2] < self.base_temp and  list[1] < self.upper_temp:
+                theta = np.arcsin((self.base_temp - T2)/alpha2)
+                q = (1/(2.3.141))*(T2 - self.base_temp)*(theta + 3.141/2) 
+                    + T2*np.cos(theta))
+            elif list[2] > self.base_temp and  list[1] > self.upper_temp:
+                theta = np.arcsin((self.upper_temp - T2)/alpha)
+                q = (1/2*3.141))*((T2 - self.base_temp)*(theta + 3.141/2)
+                    + (self.upper_temp - self.base_temp)*(3.141/2 - theta)
+                    - alpha2*np.cos(theta))
+            elif list[2] < self.base_temp and  list[1] > self.upper_temp:
+                theta1 = np.arcsin((self.base_temp - T2)/alpha2)
+                theta2 = np.arcsin((self.upper_temp - T2)/alpha2)
+                q = (1/(2*3.141))*((T2 - self.base_temp)*(theta2 - theta1)
+                    + alpha2*(np.cos(theta1)
+                    - np.cos(theta2))
+                    + (self.upper_temp - self.base_temp)*(3.141/2 - theta2))
+            if q < 0:
                 q = 0
             else:
                 pass
             z = q
-            dd += (x+z)
-        return dd  
+            dd = (x + z)  
         
 #class objected meant to create a list object of temperature data from a dataframe.
 
