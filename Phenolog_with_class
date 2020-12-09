@@ -1,5 +1,33 @@
-##class object meant to pass objects from a list to calculate and report degree day accumulation.
+##Useful libraries as I develop this tool
+import pandas as pd
+import numpy as np
+import scipy
+import matplotlib.pyplot as plt
 
+
+##Function to prompt the user to either write in the name of their pest of interest or 
+##search through a database of insects and their developmental thresholds and present a
+##list which the user can find the insect they're looking for.
+
+def menu(df):
+    response = input("""Input insect to model:
+                     A: Call menu
+                     B: Input name directly
+                     """ 
+                     )
+    if response == "A":
+        menu = df["Common Name"]
+        print(menu)
+        string = input("Type the name of the insect pest you want to model. ")
+    else:
+        string = input("Type the name of the insect pest you want to model. ")
+    return string
+    
+    
+##Class object meant to pass objects from a list to calculate and report degree day accumulation.
+##Uses a modified sine wave method and so all degree days are calculated using three temperature 
+##values: a maximum and two minima.
+##Returns a plot of the accumulated degree days.
 class Degree_day:
     def __init__(self, common_name, scientific_name, base_temp, upper_temp, temp_list):
         self.common_name        = common_name
@@ -8,92 +36,115 @@ class Degree_day:
         self.upper_temp         = upper_temp
         self.temp_list          = temp_list
         
+    def formula_1(self):
+        q = 0.5*(self.upper_temp-self.base_temp)
+        return q 
+        
+    def formula_2(self):
+        q = 0
+        return q
+    
+    def formula_3(self, base_temp, T):
+        q = 0.5*(T-base_temp)
+        return q
+    
+    def formula_4(self, base_temp, T, alpha):
+        theta = np.arcsin((base_temp-T)/alpha)
+        q = (1/(2*3.141))*((T-base_temp)*(theta+3.141/2)
+                           +T*np.cos(theta))
+        return q
+    
+    def formula_5(self, base_temp, upper_temp, T, alpha):
+        theta = np.arcsin((upper_temp-T)/alpha)
+        q = (1/(2*3.141))*((T-base_temp)*(theta+3.141/2)
+                           +(upper_temp-base_temp)*(3.141/2-theta)
+                           -alpha*np.cos(theta))
+        return q
+    
+    def formula_6(self, base_temp, upper_temp, T, alpha):
+        theta1 = np.arcsin((base_temp-T)/alpha)
+        theta2 = np.arcsin((upper_temp-T)/alpha)
+        q = (1/(2*3.141))*((T-base_temp)*(theta2-theta1)+alpha*(np.cos(theta1)
+                            -np.cos(theta2))
+                            +(upper_temp-base_temp)*(3.141/2-theta2))
+        return q
+    
     def degree_days(self):
         dd = 0
         x  = 0
         z  = 0
-        for list in self.temp_list:
-            T     = (list[0] + list[1])/2
-            alpha = (list[1] - list[0])/2 
-            if list[0]   > self.upper_temp and list[1] > self.upper_temp:
-                y = 0.5*(self.upper_temp - self.base_temp)
-            elif list[0] < self.base_temp and  list[1] < self.base_temp:
-                y = 0
-            elif list[0] > self.base_temp and  list[1] < self.upper_temp:
-                y = 0.5*(T - self.base_temp)
-            elif list[0] < self.base_temp and  list[1] < self.upper_temp:
-                theta = np.arcsin((self.base_temp - T)/alpha)
-                y = (1/(2.3.141))*(T - self.base_temp)*(theta + 3.141/2) 
-                    + T*np.cos(theta))
-            elif list[0] > self.base_temp and  list[1] > self.upper_temp:
-                theta = np.arcsin((self.upper_temp - T)/alpha)
-                y = (1/2*3.141))*((T - self.base_temp)*(theta + 3.141/2)
-                    + (self.upper_temp - self.base_temp)*(3.141/2 - theta)
-                    - alpha*np.cos(theta))
-            elif list[0] < self.base_temp and  list[1] > self.upper_temp:
-                theta1 = np.arcsin((self.base_temp - T)/alpha)
-                theta2 = np.arcsin((self.upper_temp - T)/alpha)
-                y = (1/(2*3.141))*((T - self.base_temp)*(theta2 - theta1)
-                    + alpha*(np.cos(theta1)
-                    - np.cos(theta2))
-                    + (self.upper_temp - self.base_temp)*(3.141/2 - theta2))
-            if y < 0:
-                y = 0
-            else:
-                pass
-            x = y
-
-            T2     = (list[2] + list[1])/2
-            alpha2 = (list[1] - list[2])/2
-            if list[2]   > self.upper_temp and list[1] > self.upper_temp:
-                q = 0.5*(self.upper_temp - self.base_temp)
-            elif list[2] < self.base_temp and  list[1] < self.base_temp:
-                q = 0
-            elif list[2] > self.base_temp and  list[1] < self.upper_temp:
-                q = 0.5*(T2 - self.base_temp)
-            elif list[2] < self.base_temp and  list[1] < self.upper_temp:
-                theta = np.arcsin((self.base_temp - T2)/alpha2)
-                q = (1/(2.3.141))*(T2 - self.base_temp)*(theta + 3.141/2) 
-                    + T2*np.cos(theta))
-            elif list[2] > self.base_temp and  list[1] > self.upper_temp:
-                theta = np.arcsin((self.upper_temp - T2)/alpha)
-                q = (1/2*3.141))*((T2 - self.base_temp)*(theta + 3.141/2)
-                    + (self.upper_temp - self.base_temp)*(3.141/2 - theta)
-                    - alpha2*np.cos(theta))
-            elif list[2] < self.base_temp and  list[1] > self.upper_temp:
-                theta1 = np.arcsin((self.base_temp - T2)/alpha2)
-                theta2 = np.arcsin((self.upper_temp - T2)/alpha2)
-                q = (1/(2*3.141))*((T2 - self.base_temp)*(theta2 - theta1)
-                    + alpha2*(np.cos(theta1)
-                    - np.cos(theta2))
-                    + (self.upper_temp - self.base_temp)*(3.141/2 - theta2))
-            if q < 0:
-                q = 0
-            else:
-                pass
-            z = q
-            dd = (x + z)  
+        degree_days_list = []
         
-#class objected meant to create a list object of temperature data from a dataframe.
+        for list in self.temp_list:
+            T1 = (list[0]+list[1])/2
+            alpha1 = (list[1]-list[0])/2
+            
+            if list[0] > self.upper_temp and list[1] > self.upper_temp:
+                x = self.forumula_1()
+            elif list[0] < self.base_temp and list[1] < self.base_temp:
+                x = 0
+            elif list[0] > self.base_temp and list[1] <= self.upper_temp:
+                x = self.formula_3(T1,self.base_temp)
+            elif list[0] <= self.base_temp and list[1] <= self.upper_temp:
+                x = self.formula_4(self.base_temp, T1, alpha1)
+            elif list[0] >= self.base_temp and list[1] >= self.upper_temp:
+                x = formula_5(self, T1, alpha1)
+            elif list[0] <= self.base_temp and list[1] >= self.upper_temp:
+                x = formula_6(self, T1, alpha1)
+            if x <= 0:
+                x = 0
+            else:
+                pass
+
+            T2 = (list[2]+list[1])/2
+            alpha2 = (list[1]-list[2])/2
+            
+            if list[2] > self.upper_temp and list[1] > self.upper_temp:
+                z = formula_1(self)
+            elif list[2] < self.base_temp and list[1] < self.base_temp:
+                z = 0
+            elif list[2] > self.base_temp and list[1] <= self.upper_temp:
+                z = self.formula_3(self.base_temp, T2)
+            elif list[2] <= self.base_temp and list[1] <= self.upper_temp:
+                z = self.formula_4(self.base_temp, T2, alpha2)
+            elif list[2] >= self.base_temp and list[1] >= self.upper_temp:
+                z = self.formula_5(T2, alpha2)
+            elif list[2] <= self.base_temp and list[1] >= self.upper_temp:
+                z = self.formula_6(T2, alpha2)
+            if z <= 0:
+                z = 0
+            else:
+                pass
+            dd += (x+z)
+            degree_days_list.append(dd)
+        plt.plot(degree_days_list, 'ro', linewidth = 5)
+        plt.xlabel('Days')
+        plt.ylabel('Degree days')
+        plt.show()
+        return dd  
+        
+
+#Class objected meant to create a list object of temperature data from a dataframe.
 
 class temperature_input:
     def __init__(self, temp_df):
         self.temp_df = temp_df
-        
+
     def make_temp_list(self):
-        temp_listoflist = self.temp_df["Temp"].tolist()
+        temp_listoflist = self.temp_df.values.tolist()
         return temp_listoflist
         
-#class object designed to find specific rows in a data frame based on a string argument. These rows are then to be turned into list objects 
-#that can be searched for specific values. 
+        
+##Class object designed to find specific rows in a data frame based on a string argument. 
+##These rows are then to be turned into list objects that can be searched for specific values. 
 
 class find_elements:
     def __init__(self, df, string):
         self.df     = df
         self.string = string
-
+    
     def find_row(self):
-        row      = df.loc[df["Scientific name"] == self.string]
+        row      = df.loc[df["Common Name"] == self.string]
         row_list = row.values.tolist()
         return row_list
     
@@ -112,6 +163,7 @@ class find_elements:
     def upper_temp(self, row_list):
         upper_temp = row_list[0][3]
         return upper_temp
+
 
 #Example
 import pandas as pd
