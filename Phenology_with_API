@@ -1,0 +1,415 @@
+import pandas as pd
+import numpy as np
+import requests
+from datetime import datetime
+from datetime import timezone
+
+import plotly.express as px
+
+##Creates a class object, API_call, that contains all the information needed to retrieve data from Clear_Ag's soil data endpoint.
+class API_call:
+    def __init__(self, app_id, app_key, location, start, end):
+        self.app_id = app_id
+        self.app_key = app_key
+        self.location = location
+        self.start = start
+        self.end = end
+
+    ##Inserts the attributes from API_call into a url string, which is used later by requests.get() to contact the API endpoint.
+    def API_url(self):
+        api_url= f'https://ag.us.clearapis.com/v1.1/daily/soil?app_id={self.app_id}&app_key={self.app_key}&location={self.location}&start={self.start}&end={self.end}'
+        return api_url
+
+##Function allowing user to enter their endpoint ID.
+def api_id():
+        app_id = input("Enter API ID ")
+        return app_id
+
+##Function allowing user to enter their endpoint key.
+def api_key():
+        app_key = input("Enter API key ")
+        return app_key
+
+##Function allowing user to define the start date of their observation window.
+def start_datetime_to_unix():
+    print("Start date")
+    datetime_year = int(input("Enter year ")
+                       )
+    datetime_month = int(input("Enter month ")
+                        )
+    datetime_day = int(input("Enter day ")
+                      )
+    datetime_start = datetime(datetime_year, datetime_month, datetime_day, 0, 0)
+    print(datetime_start)
+    timestamp = int(datetime_start.replace(tzinfo=timezone.utc).timestamp()
+                   )
+    return timestamp
+
+##Function allowing user to define the end date of their observation window.
+def end_datetime_to_unix():
+    print("End date")
+    datetime_year = int(input("Enter year ")
+                       )
+    datetime_month = int(input("Enter month ")
+                        )
+    datetime_day = int(input("Enter day ")
+                      )
+    datetime_start = datetime(datetime_year, datetime_month, datetime_day, 0, 0)
+    print(datetime_start)
+    timestamp = int(datetime_start.replace(tzinfo=timezone.utc).timestamp()
+                   )
+    return timestamp
+
+##Function allowing user to identify the coordinates of the location(s) of interest. After each entry, the script prompts the user to decide if 
+##they want to add more locations or not. It restricts them to entering a maximum of 5 locations.
+def enter_location2():
+    location_list = []
+    more_coordinates = "y"
+    coordinate_count = 1
+    while more_coordinates.lower() == "y":
+        lat = float(input(f"Enter LAT of coordinate #{coordinate_count}: "))
+        lon = float(input(f"Enter LON of coordinate #{coordinate_count}: "))
+        location_list.append((lat,lon))
+        coordinate_count += 1
+        if coordinate_count > 5:
+            break
+        more_coordinates = input("Enter more coordinates? Y/N ")
+    loc = str(location_list).replace(" ", "")
+    return loc
+    
+##Retrieves a json dictionary called through requests.get() and parses through the data to create two lists: one containing all the maximum temperature
+##values and one containing all the minimum temperature values. These values are then zipped together to create the list of tuples, "all_temp".
+def get_daily_temperatures(dict):
+    max_temp = []
+    min_temp = []
+    for key in dict:
+        soil_date = dict[key]
+        for key in soil_date:
+            soil_temp = soil_date[key]
+            max_temp_value = soil_temp['soil_temp_max_0to10cm']
+            min_temp_value = soil_temp['soil_temp_min_0to10cm']
+            max_temp.append(max_temp_value['value'])
+            min_temp.append(min_temp_value['value'])
+    all_temp=list(zip(max_temp,min_temp))
+    return(all_temp)
+
+##Creates list of dates from the key values for a given location. User can determine the number of repetitions depending on the number of locations entered 
+##when creating the API_call object.
+##All sublists are then saved as one large list called 'final_dateList'
+def date_key_list(dict):
+    final_dateList = []
+    key, val = next(iter(dict.items()
+                        )
+                   )
+    dateList  = list(val.keys()
+                    )
+    key_count = len(list(dict.keys()))
+    count = 0
+    while count < key_count:
+        final_dateList += dateList
+        count += 1
+    return final_dateList
+    
+##Creates a list of numerical indicators for each coordinate pair that I can later zip into the daily_temperature_dataframe for the purpose
+##of further processing.
+def site_list(dict):
+    site_id    = []
+    key_count  = 0
+    list_count = 0
+    key, val = next(iter(dict.items()))
+    x = len(list(dict.keys()))
+    y = len(list(val.keys()))
+    list_count = 0
+    append_count = 1
+    while append_count <= x:
+        while list_count < y:
+            site_id.append(append_count)
+            list_count += 1
+        list_count = 0
+        append_count += 1
+    key_count += 1
+    return site_id
+    
+##Menu that calls the loaded dataframe of insect information and 
+def menu(df):
+    response = input("""Input insect to model:
+                     A: Call menu
+                     B: Input name directly
+                     """ 
+                     )
+    if response == "A":
+        menu = df["Common Name"]
+        print(menu)
+        string = input("Type the name of the insect pest you want to model. ")
+    else:
+        string = input("Type the name of the insect pest you want to model. ")
+    return string
+    
+##Function for converting the base/upper temperature attributes from the Degree_day object into the fahrenheit scale for the purpose 
+##of calculating degree days with temperature values coming from the API endpoint.
+def celsius_to_far(temperature):
+    avg_temp = (9*temperature)/5 + 32
+    return avg_temp
+
+
+##Class object meant to pass objects from a list to calculate and report degree day accumulation.
+##Uses a modified sine wave method and so all degree days are calculated using three temperature 
+##values: a maximum and two minima.
+##Each formula is a method under the class Degree_day and are activated depending on the relationship 
+##of the three temperature values to the insect's base and upper temperatures.
+##Returns a plot of the accumulated degree days.
+class Degree_day:
+    def __init__(self, common_name, scientific_name, base_temp, upper_temp, subframe_dict):
+        self.common_name           = common_name
+        self.scientific_name       = scientific_name
+        self.base_temp             = base_temp
+        self.upper_temp            = upper_temp
+        self.subframe_dict         = subframe_dict
+
+    ##Each formula below is a separate way of calculating degree days depending on the maximum and minimum temperatures for that day.
+    def formula_1(self, base_temp, upper_temp):
+        q = 0.5*(self.upper_temp-self.base_temp)
+        return q 
+        
+    def formula_2(self):
+        q = 0
+        return q
+    
+    def formula_3(self, base_temp, T):
+        q = 0.5*(T-base_temp)
+        return q
+    
+    def formula_4(self, base_temp, T, alpha):
+        theta = np.arcsin((base_temp-T)/alpha)
+        q = (1/(2*3.141))*((T-base_temp)*(theta+3.141/2)
+                           +T*np.cos(theta))
+        return q
+    
+    def formula_5(self, base_temp, upper_temp, T, alpha):
+        theta = np.arcsin((upper_temp-T)/alpha)
+        q = (1/(2*3.141))*((T-base_temp)*(theta+3.141/2)
+                           +(upper_temp-base_temp)*(3.141/2-theta)
+                           -alpha*np.cos(theta))
+        return q
+    
+    def formula_6(self, base_temp, upper_temp, T, alpha):
+        theta1 = np.arcsin((base_temp-T)/alpha)
+        theta2 = np.arcsin((upper_temp-T)/alpha)
+        q = (1/(2*3.141))*((T-base_temp)*(theta2-theta1)+alpha*(np.cos(theta1)
+                            -np.cos(theta2))
+                            +(upper_temp-base_temp)*(3.141/2-theta2))
+        return q
+    
+    ##Decision-tree function that determines which degree day formula to run based on the 
+    ##temperature data's relationship to the insect's upper and base temperatures.        
+    def degree_days(self):
+        degree_days_list = []
+        for key, value in self.subframe_dict.items():
+            dd = 0
+            x  = 0
+            z  = 0
+            print(key)
+            for list in value:
+                T1 = (list[0]+list[1])/2
+                alpha1 = (list[1]-list[0])/2
+                if list[2] > self.upper_temp and list[1] > self.upper_temp:
+                    x = self.formula_1(self.base_temp, self.upper_temp)
+                elif list[2] < self.base_temp and list[1] < self.base_temp:
+                    x = 0
+                elif list[2] > self.base_temp and list[1] <= self.upper_temp:
+                    x = self.formula_3(self.base_temp, T1)
+                elif list[2] <= self.base_temp and list[1] <= self.upper_temp:
+                    x = self.formula_4(self.base_temp, T1, alpha1)
+                elif list[2] >= self.base_temp and list[1] >= self.upper_temp:
+                    x = self.formula_5(self.base_temp, self.upper_temp, T1, alpha1)
+                elif list[2] <= self.base_temp and list[1] >= self.upper_temp:
+                    x = self.formula_6(self.base_temp, self.upper_temp, T1, alpha1)
+                if x <= 0:
+                    x = 0
+                else:
+                    pass
+                T2 = (list[2]+list[1])/2
+                alpha2 = (list[1]-list[2])/2
+                if list[3] > self.upper_temp and list[1] > self.upper_temp:
+                    z = self.formula_1(self.base_temp, self.upper_temp)
+                elif list[3] < self.base_temp and list[1] < self.base_temp:
+                    z = 0
+                elif list[3] > self.base_temp and list[1] <= self.upper_temp:
+                    z = self.formula_3(self.base_temp, T2)
+                elif list[3] <= self.base_temp and list[1] <= self.upper_temp:
+                    z = self.formula_4(self.base_temp, T2, alpha2)
+                elif list[3] >= self.base_temp and list[1] >= self.upper_temp:
+                    z = self.formula_5(self.base_temp, self.upper_temp, T2, alpha2)
+                elif list[3] <= self.base_temp and list[1] >= self.upper_temp:
+                    z = self.formula_6(self.base_temp, self.upper_temp, T2, alpha2)
+                if z <= 0:
+                    z = 0
+                else:
+                    pass
+                dd += (x+z)
+                degree_days_list.append(dd)
+        return degree_days_list
+                
+##Class objected meant to create a list object of temperature data from a dataframe.                
+class temperature_input:
+    def __init__(self, temp_df):
+        self.temp_df = temp_df
+
+    ##Function that converts dataframe into a list.
+    def make_temp_list(self):
+        temp_listoflist = self.temp_df.values.tolist()
+        return temp_listoflist
+
+##Class object designed to find specific rows in a data frame based on a string argument. 
+##These rows are then to be turned into list objects that can be searched for specific values. 
+class find_elements:
+    def __init__(self, df, string):
+        self.df     = df
+        self.string = string
+
+    ##Isolates a row based on user input for the purpose of defining the attributes of the Degree_day class object.
+    def find_row(self):
+        row      = df.loc[df["Common Name"] == self.string]
+        row_list = row.values.tolist()
+        return row_list
+    
+    ##The next five functions select specific values contained in the find_elements string.
+    def common_name(self, row_list):
+        common_name = row_list[0][1]
+        return common_name
+    
+    def scientific_name(self, row_list):
+        scientific_name = row_list[0][0]
+        return scientific_name
+    
+    def base_temp(self, row_list):
+        base_temp = row_list[0][2]
+        return base_temp
+    
+    def upper_temp(self, row_list):
+        upper_temp = row_list[0][3]
+        return upper_temp
+    
+    def temperature_data(self, row_list):
+        temperature_data = row_list[0][4]
+        if temperature_data == "Air":
+            pass
+        else:
+            pass
+   
+##Subdivides the daily_temperature_dataframe into one or more subframes for the purpose of calculating degree days on a site-by-site basis.
+##After division, they are returned as a dictionary for futher processing.
+def subframe(df):
+    subframe_dict = {}
+    x = len(df.index)
+    no_of_locations = df['Site_ID'].max()
+    z = int(x/no_of_locations)
+    if no_of_locations == 1:
+        subframe1 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==1]
+        subframe_list_1 = temperature_input(subframe1).make_temp_list()
+        subframe_dict.update([('subframe_1', subframe_list_1)])
+        return subframe_dict
+    elif no_of_locations == 2:
+        subframe1 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==1]
+        subframe2 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==2]
+        subframe_list_1 = temperature_input(subframe1).make_temp_list()
+        subframe_list_2 = temperature_input(subframe2).make_temp_list()
+        subframe_dict.update([('subframe_1', subframe_list_1),
+                              ('subframe_2', subframe_list_2)])
+        return subframe_dict
+    elif no_of_locations == 3:
+        subframe1 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==1]
+        subframe2 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==2]
+        subframe3 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==3]
+        subframe_list_1 = temperature_input(subframe1).make_temp_list()
+        subframe_list_2 = temperature_input(subframe2).make_temp_list()
+        subframe_list_3 = temperature_input(subframe3).make_temp_list()
+        subframe_dict.update([('subframe_1', subframe_list_1),
+                              ('subframe_2', subframe_list_2),
+                              ('subframe_3', subframe_list_3)])
+        return subframe_dict
+    elif no_of_locations == 4:
+        subframe1 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==1]
+        subframe2 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==2]
+        subframe3 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==3]
+        subframe4 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==4]
+        subframe_list_1 = temperature_input(subframe1).make_temp_list()
+        subframe_list_2 = temperature_input(subframe2).make_temp_list()
+        subframe_list_3 = temperature_input(subframe3).make_temp_list()
+        subframe_list_4 = temperature_input(subframe4).make_temp_list()
+        subframe_dict.update([('subframe_1', subframe_list_1),
+                              ('subframe_2', subframe_list_2),
+                              ('subframe_3', subframe_list_3), 
+                              ('subframe_4', subframe_list_4)])
+        return subframe_dict
+    elif no_of_locations == 5:
+        subframe1 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==1]
+        subframe2 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==2]
+        subframe3 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==3]
+        subframe4 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==4]
+        subframe5 = daily_temperature_dataframe.loc[daily_temperature_dataframe['Site_ID']==5]
+        subframe_list_1 = temperature_input(subframe1).make_temp_list()
+        subframe_list_2 = temperature_input(subframe2).make_temp_list()
+        subframe_list_3 = temperature_input(subframe3).make_temp_list()
+        subframe_list_4 = temperature_input(subframe4).make_temp_list()
+        subframe_list_5 = temperature_input(subframe5).make_temp_list()
+        subframe_dict.update([('subframe_1', subframe_list_1),
+                              ('subframe_2', subframe_list_2),
+                              ('subframe_3', subframe_list_3), 
+                              ('subframe_4', subframe_list_4), 
+                              ('subframe_5', subframe_list_5)])
+        return subframe_dict
+
+-----------------
+#Workflow
+
+# Step 1. Retrieve pest information dataframe.
+##Calls the dataframe that is used to define the Degree_day class object's attributes.
+df = pd.read_csv('Simple_insect_development2.csv', delimiter = ',')
+
+# Step 2. Fill emptry cells to avoid error.
+##Fills in empty cells of the dataframe in the Base temp and Upper temp columns with dummy values. Dummy values selected to be extreme cases, 
+##beyond which development shouldn't take place.
+df['Base temp (C)'].fillna(0, inplace = True)
+df['Upper temp (C)'].fillna(40, inplace = True)
+
+Step 3. Define location(s) and timeperiod of interest.
+##This set of code retrieves the temperature data from ClearAg's API and creates a pandas data frame with a Max_Temp and two Min_Temp columns.
+##This data is used to calculate degree days by serving as the temp_list argument when creating the Degree_day class object.
+call = API_call(api_id(), api_key(), enter_location2(), start_datetime_to_unix(), end_datetime_to_unix())
+x = call.API_url()
+soil_daily = requests.get(x).json()
+d_temp = get_daily_temperatures(soil_daily)
+final_dateList = date_key_list(soil_daily)
+sites = site_list(soil_daily)
+daily_temperature_dataframe = pd.DataFrame(d_temp)
+daily_temperature_dataframe.columns = ["Max_Temp", "Min_Temp"]
+daily_temperature_dataframe.insert(2, "Min_Temp2",daily_temperature_dataframe["Min_Temp"], True)
+daily_temperature_dataframe.insert(3, "Date", final_dateList, True)
+daily_temperature_dataframe.insert(0, "Site_ID", sites, True)
+
+#Step 4. Select target pest and create find_elements class object.
+##Creates a variable containing the find_elements class object.
+a = find_elements(df, menu(df))
+
+#Step 5. Create a Degree_day class object based on the information from find_elements() and API_call().
+##Creates a variable containing the Degree_day class object.
+b = Degree_day(a.common_name(a.find_row()
+                            ), 
+               a.scientific_name(a.find_row()
+                                ), 
+               celsius_to_far(a.base_temp(a.find_row()
+                                         )
+                             ), 
+               celsius_to_far(a.upper_temp(a.find_row()
+                                          )
+                             ), 
+               subframe(daily_temperature_dataframe)
+              )
+              
+#Step 6. Calculate degree days.
+##Calculates degree days for the target pest at each location, returning a list of degree day values.  
+degree_days = b.degree_days()
+
+##Adds the output from degree_days() to the daily_temperature_dataframe.
+final_dataframe = daily_temperature_dataframe.insert(5, "Degree_days", degree_days, True)
