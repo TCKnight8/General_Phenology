@@ -1,0 +1,3 @@
+def biofix(self, row_list):
+    biofix = row_list[0][5]
+    return biofix
