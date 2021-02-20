@@ -1,0 +1,9 @@
+def biofix(self):
+    if self.biofix == 'NA':
+        reference_date = enterDate()
+        reference_date_step1 = datetime.strptime(reference_date, '%d/%M')
+        reference_date_timestamp = int(reference_date_step1.replace(tzinfo=timezone.utc).timestamp())
+    else:
+        reference_date_step1 = datetime.strptime(self.biofix, '%d/%M')
+        reference_date_timestamp = int(reference_date_step1.replace(tzinfo=timezone.utc).timestamp())
+    return reference_date_timestamp
